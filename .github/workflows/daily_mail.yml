@@ -1,4 +1,4 @@
-name: 每日名言推送
+name: 每日早报
 
 on:
   schedule:
@@ -25,4 +25,5 @@ jobs:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
           RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
+          WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
         run: node send_email.js
