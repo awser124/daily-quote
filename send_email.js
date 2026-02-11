@@ -4,12 +4,22 @@ async function getMorningData() {
     const targetCity = "襄阳";
     let weatherData = null;
 
+    // 随机延迟 1-5 秒，防止 GitHub 任务瞬间并发冲击 API
+    const waitTime = Math.floor(Math.random() * 4000) + 1000;
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+
+    const userAgents = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+    ];
+
     // 尝试获取天气数据，最多尝试 3 次，间隔递增
     for (let i = 0; i < 3; i++) {
         try {
             const res = await fetch(`https://uapis.cn/api/v1/misc/weather?city=${encodeURIComponent(targetCity)}`, {
                 headers: {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    "User-Agent": userAgents[Math.floor(Math.random() * userAgents.length)]
                 }
             });
             const json = await res.json();
@@ -17,10 +27,11 @@ async function getMorningData() {
                 weatherData = json;
                 break;
             }
-            console.log(`第 ${i + 1} 次尝试未获取到数据，原因: ${json.msg || '未知'}`);
-            await new Promise(resolve => setTimeout(resolve, 3000 * (i + 1))); 
+            console.log(`尝试 ${i + 1} 失败，API 返回: ${json.msg || '限流中'}`);
+            // 失败后等待更久一点
+            await new Promise(resolve => setTimeout(resolve, 5000 * (i + 1))); 
         } catch (e) {
-            console.error(`第 ${i + 1} 次请求异常`);
+            console.error(`请求异常: ${e.message}`);
         }
     }
 
@@ -29,11 +40,10 @@ async function getMorningData() {
         const quoteData = await quoteRes.json();
 
         const hasData = weatherData !== null;
+        const tempNum = hasData ? parseInt(weatherData.temperature) : null;
         
-        // 温馨提示逻辑
         let tip = "愿你拥有美好的一天";
         if (hasData) {
-            const tempNum = parseInt(weatherData.temperature);
             if (tempNum <= 10) tip = "天冷，记得多穿件衣服";
             else if (tempNum >= 30) tip = "天热，注意防暑防晒";
             else if (weatherData.weather.includes("雨")) tip = "出门记得带把伞";
@@ -44,14 +54,14 @@ async function getMorningData() {
             from: quoteData.from,
             city: hasData ? weatherData.city : targetCity,
             temp: hasData ? weatherData.temperature : "N/A",
-            desc: hasData ? weatherData.weather : "获取中...",
+            desc: hasData ? weatherData.weather : "数据同步中",
             wind: hasData ? `${weatherData.wind_direction} ${weatherData.wind_power}级` : "--",
             humidity: hasData ? weatherData.humidity : "--",
             tip: tip,
             date: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'numeric', day: 'numeric' })
         };
     } catch (error) {
-        console.error("数据处理失败:", error);
+        console.error("处理流程失败:", error);
         return null;
     }
 }
@@ -102,7 +112,7 @@ async function sendDailyMail() {
                 `
             };
             await transporter.sendMail(mailOptions);
-            console.log(`成功送达: ${to}`);
+            console.log(`已送达: ${to}`);
         } catch (err) {
             console.error(`送达失败: ${to}`, err.message);
         }
