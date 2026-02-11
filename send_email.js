@@ -5,9 +5,8 @@ async function getMorningData() {
         const quoteRes = await fetch("https://v1.hitokoto.cn");
         const quoteData = await quoteRes.json();
 
-        // 默认坐标：北京
-        const lat = "39.90"; 
-        const lon = "116.40";
+        const lat = "31.774636"; 
+        const lon = "111.838905";
         const apiKey = process.env.WEATHER_API_KEY;
         
         const weatherUrl = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=zh_cn`;
