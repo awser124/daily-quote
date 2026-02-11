@@ -5,7 +5,7 @@ async function getMorningData() {
         const quoteRes = await fetch("https://v1.hitokoto.cn");
         const quoteData = await quoteRes.json();
 
-        const targetCity = "襄阳"; 
+        const targetCity = "南漳县"; 
         const weatherRes = await fetch(`https://uapis.cn/api/v1/misc/weather?city=${encodeURIComponent(targetCity)}`);
         const weatherData = await weatherRes.json();
 
