@@ -1,0 +1,27 @@
+name: 每日名言推送
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # 北京时间早上 8 点
+  workflow_dispatch:
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 安装 Nodemailer
+        run: npm install nodemailer
+
+      - name: 执行发送
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+        run: node send_email.js
