@@ -83,8 +83,8 @@ async function sendDailyMail() {
                         </div>
 
                         <div style="margin-top: 30px; text-align: center; color: #999; font-size: 12px;">
-                            <p>这份简报是由你的 GitHub 机器人自动整理发送的</p>
-                            <p>祝你今天工作顺利，心情愉快！</p>
+                            <p>这份简报是由 GitHub 机器人自动整理发送的</p>
+                            <p>祝你今天心情愉快！</p>
                         </div>
                     </div>
                 </div>
