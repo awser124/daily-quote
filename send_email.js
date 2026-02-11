@@ -2,47 +2,30 @@ const nodemailer = require("nodemailer");
 
 async function getMorningData() {
     try {
-        // 1. 获取名言
         const quoteRes = await fetch("https://v1.hitokoto.cn");
         const quoteData = await quoteRes.json();
 
-        // 2. 获取 OpenWeather One Call 3.0 数据
-        const lat = "39.90"; // 北京纬度
-        const lon = "116.40"; // 北京经度
-        const apiKey = "54c8b09e75c3d0d593d61a49aa1c08a7";
+        const lat = "39.90"; 
+        const lon = "116.40";
+        const apiKey = process.env.WEATHER_API_KEY;
         
-        // 使用 One Call 3.0 接口地址
         const weatherUrl = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=zh_cn`;
         
         const weatherRes = await fetch(weatherUrl);
         const weatherData = await weatherRes.json();
 
-        // 检查 3.0 接口特有的 current 字段是否存在
-        if (!weatherData.current) {
-            console.error("API 返回异常:", weatherData.message || "未知错误");
-            // 如果 API 尚未激活或报错，提供保底显示
-            return {
-                quote: quoteData.hitokoto,
-                from: quoteData.from,
-                temp: "N/A",
-                desc: "天气数据待同步",
-                humidity: "--",
-                date: new Date().toLocaleDateString('zh-CN')
-            };
-        }
-
-        const current = weatherData.current;
+        const hasData = weatherData && weatherData.current;
 
         return {
             quote: quoteData.hitokoto,
             from: quoteData.from,
-            temp: Math.round(current.temp), // 对应你提供的 current.temp
-            desc: current.weather[0].description, // 对应 current.weather.description
-            humidity: current.humidity, // 对应 current.humidity
-            date: new Date().toLocaleDateString('zh-CN')
+            temp: hasData ? Math.round(weatherData.current.temp) : "N/A",
+            desc: hasData ? weatherData.current.weather[0].description : "数据同步中",
+            humidity: hasData ? weatherData.current.humidity : "--",
+            date: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'numeric', day: 'numeric' })
         };
     } catch (error) {
-        console.error("数据抓取流程异常:", error);
+        console.error("数据抓取失败:", error);
         return null;
     }
 }
@@ -51,57 +34,54 @@ async function sendDailyMail() {
     const { EMAIL_USER, EMAIL_PASS, RECEIVER_EMAIL } = process.env;
     const data = await getMorningData();
 
-    if (!data) {
-        console.error("无法获取必要数据，取消发送");
+    if (!data || !RECEIVER_EMAIL) {
+        console.error("缺少必要配置或数据");
         process.exit(1);
     }
 
-    try {
-        const transporter = nodemailer.createTransport({
-            service: "qq",
-            port: 465,
-            secure: true,
-            auth: {
-                user: EMAIL_USER,
-                pass: EMAIL_PASS,
-            }
-        });
+    // 将逗号分隔的邮箱字符串转为数组，并去除空格
+    const recipients = RECEIVER_EMAIL.split(',').map(email => email.trim());
 
-        const mailOptions = {
-            from: `"每日早报" <${EMAIL_USER}>`,
-            to: RECEIVER_EMAIL,
-            subject: `早安简报 | ${data.date}`,
-            html: `
-                <div style="max-width: 500px; margin: 20px auto; border: 1px solid #eee; border-radius: 12px; font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
-                    <div style="background: #0052d9; color: white; padding: 25px; text-align: center;">
-                        <div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">${data.date}</div>
-                        <div style="font-size: 32px; font-weight: bold;">${data.temp}℃</div>
-                        <div style="font-size: 18px; margin-top: 5px;">${data.desc}</div>
-                    </div>
-                    
-                    <div style="padding: 30px; background: white;">
-                        <div style="color: #666; font-size: 14px; margin-bottom: 10px;">今日寄语：</div>
-                        <div style="font-size: 18px; color: #333; line-height: 1.6; position: relative;">
-                            “${data.quote}”
+    const transporter = nodemailer.createTransport({
+        service: "qq",
+        port: 465,
+        secure: true,
+        auth: { user: EMAIL_USER, pass: EMAIL_PASS }
+    });
+
+    console.log(`准备发送给 ${recipients.length} 个联系人...`);
+
+    // 使用循环逐一发送，确保互不影响
+    for (const to of recipients) {
+        try {
+            const mailOptions = {
+                from: `"每日早报" <${EMAIL_USER}>`,
+                to: to,
+                subject: `早安简报 | ${data.date}`,
+                html: `
+                    <div style="max-width: 500px; margin: 20px auto; border: 1px solid #eee; border-radius: 16px; font-family: sans-serif; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                        <div style="background: linear-gradient(135deg, #0052d9 0%, #0072ff 100%); color: white; padding: 35px 20px; text-align: center;">
+                            <div style="font-size: 14px; opacity: 0.8; margin-bottom: 10px;">${data.date}</div>
+                            <div style="font-size: 48px; font-weight: bold; margin-bottom: 10px;">${data.temp === 'N/A' ? data.temp : data.temp + '°C'}</div>
+                            <div style="font-size: 20px; letter-spacing: 2px;">${data.desc}</div>
                         </div>
-                        <div style="text-align: right; color: #999; margin-top: 15px; font-size: 15px;">
-                            —— ${data.from}
+                        <div style="padding: 35px; background: #fff;">
+                            <div style="font-size: 14px; color: #999; margin-bottom: 15px;">今日寄语：</div>
+                            <div style="font-size: 19px; color: #333; line-height: 1.8;">“${data.quote}”</div>
+                            <div style="text-align: right; color: #777; margin-top: 25px; font-style: italic;">—— ${data.from}</div>
+                        </div>
+                        <div style="background: #fcfcfc; padding: 15px; border-top: 1px solid #f0f0f0; text-align: center; font-size: 12px; color: #aaa;">
+                            湿度：${data.humidity}% | 来源：OpenWeather 3.0
                         </div>
                     </div>
+                `
+            };
 
-                    <div style="padding: 15px; background: #f8f9fa; border-top: 1px solid #eee; display: flex; justify-content: space-around; font-size: 13px; color: #777;">
-                        <span>湿度：${data.humidity}%</span>
-                        <span>数据源：OpenWeather 3.0</span>
-                    </div>
-                </div>
-            `
-        };
-
-        await transporter.sendMail(mailOptions);
-        console.log("3.0 接口早报发送成功");
-    } catch (error) {
-        console.error("邮件投递失败:", error);
-        process.exit(1);
+            await transporter.sendMail(mailOptions);
+            console.log(`成功发送至: ${to}`);
+        } catch (err) {
+            console.error(`发送至 ${to} 失败:`, err.message);
+        }
     }
 }
 
