@@ -25,7 +25,7 @@ async function sendDailyMail() {
 
         const mailOptions = {
             from: `"每日一言" <${process.env.EMAIL_USER}>`,
-            to: "target-user@example.com", // 接收者邮箱
+            to: "awser124@hotmail.com", // 接收者邮箱
             subject: "早安！今日名言已送到",
             html: `
                 <div style="padding: 20px; border-left: 5px solid #0078d4; font-family: 'Microsoft YaHei', sans-serif;">
