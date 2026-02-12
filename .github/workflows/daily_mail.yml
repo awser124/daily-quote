@@ -2,7 +2,7 @@ name: 每日早报
 
 on:
   schedule:
-    - cron: '0 0 * * *' # 北京时间早上 8 点
+    - cron: '47 23 * * *' # 北京时间早上 8 点
   workflow_dispatch:
 
 jobs:
