@@ -22,6 +22,10 @@ async function getMorningData() {
                     "User-Agent": userAgents[Math.floor(Math.random() * userAgents.length)]
                 }
             });
+            if (!res.ok) {
+                throw new Error(`天气接口状态异常: ${res.status}`);
+            }
+
             const json = await res.json();
             if (json && json.code === 200) {
                 weatherData = json;
@@ -37,6 +41,9 @@ async function getMorningData() {
 
     try {
         const quoteRes = await fetch("https://v1.hitokoto.cn");
+        if (!quoteRes.ok) {
+            throw new Error(`一言接口状态异常: ${quoteRes.status}`);
+        }
         const quoteData = await quoteRes.json();
 
         const hasData = weatherData !== null;
@@ -68,9 +75,18 @@ async function getMorningData() {
 
 async function sendDailyMail() {
     const { EMAIL_USER, EMAIL_PASS, RECEIVER_EMAIL } = process.env;
+
+    if (!EMAIL_USER || !EMAIL_PASS || !RECEIVER_EMAIL) {
+        console.error("缺少必要环境变量，请检查 EMAIL_USER、EMAIL_PASS、RECEIVER_EMAIL 是否已配置");
+        process.exit(1);
+    }
+
     const data = await getMorningData();
 
-    if (!data || !RECEIVER_EMAIL) process.exit(1);
+    if (!data) {
+        console.error("未获取到日报数据，邮件发送终止");
+        process.exit(1);
+    }
 
     const recipients = RECEIVER_EMAIL.split(',').map(email => email.trim());
     const transporter = nodemailer.createTransport({
@@ -96,7 +112,7 @@ async function sendDailyMail() {
                         
                         <div style="display: table; width: 100%; background: #f8f9ff; padding: 15px 0; border-bottom: 1px solid #edf2f7;">
                             <div style="display: table-cell; text-align: center; color: #555555; font-size: 13px;">风向：${data.wind}</div>
-                            <div style="display: table-cell; text-align: center; color: #555555; font-size: 13px;">湿度：${data.humidity}%</div>
+                            <div style="display: table-cell; text-align: center; color: #555555; font-size: 13px;">湿度：${data.humidity === '--' ? data.humidity : `${data.humidity}%`}</div>
                         </div>
 
                         <div style="padding: 35px; background-color: #ffffff;">
